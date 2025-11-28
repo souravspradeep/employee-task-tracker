@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+  <!-- Background circle -->
+  <rect width="64" height="64" rx="8" fill="none" />
+
+  <!-- Three people (simple) -->
+  <g fill="#1E40AF">
+    <!-- Left person -->
+    <circle cx="16" cy="22" r="6" />
+    <path d="M10 34c0-4 6-6 12-6s12 2 12 6v2H10v-2z" opacity="0.08" />
+
+    <!-- Center person -->
+    <circle cx="32" cy="18" r="7" />
+    <path d="M22 36c0-5 10-8 16-8s16 3 16 8v2H22v-2z" opacity="0.08" />
+
+    <!-- Right person -->
+    <circle cx="48" cy="22" r="6" />
+  </g>
+
+  <!-- Magnifying glass over center (outline) -->
+  <g transform="translate(8,8)">
+    <circle cx="30" cy="34" r="12" fill="#fff" stroke="#0F172A" stroke-width="2" />
+    <path d="M40 44 L52 56" stroke="#0F172A" stroke-width="3" stroke-linecap="round" />
+
+    <!-- Tie inside magnifier -->
+    <path d="M30 28 L27 35 L30 37 L33 35 Z" fill="#0F172A" />
+  </g>
+</svg>
