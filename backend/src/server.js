@@ -96,7 +96,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/health', healthRoutes);
 
 // Serve index.html for all non-API routes (SPA fallback)
-app.get('*', (req, res) => {
+app.use((req, res) => {
   const indexPath = path.join(frontendDistPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
