@@ -70,6 +70,21 @@ initializeDatabase();
 app.use(cors()); 
 app.use(express.json()); 
 
+// Root endpoint - for testing
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Employee Task Tracker API is running!',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      employees: '/api/employees',
+      tasks: '/api/tasks',
+      dashboard: '/api/dashboard'
+    }
+  });
+});
+
 // Serve static frontend files (only if they exist - for production)
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 try {
