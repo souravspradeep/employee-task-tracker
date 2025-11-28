@@ -11,9 +11,9 @@ const pool = new Pool({
 
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Error connecting to database:', err.stack);
+    console.error('Error connecting to database:', err.stack);
   } else {
-    console.log('✅ Database connected successfully!');
+    console.log('Database connected successfully!');
     release(); 
   }
 });

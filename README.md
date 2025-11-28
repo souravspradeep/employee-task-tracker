@@ -77,9 +77,10 @@ DB_PORT=5432
 DB_NAME=employee_tracker
 DB_USER=postgres
 DB_PASSWORD=your_password_here
+JWT_SECRET=your-secret-key-here-change-in-production
 ```
 
-**Note:** Replace with your PostgreSQL credentials.
+**Note:** Replace with your PostgreSQL credentials and set a strong JWT secret.
 
 #### c. Initialize the Database
 
@@ -155,65 +156,217 @@ npm start
 http://localhost:5000/api
 ```
 
-### 1. Dashboard Endpoints
-
-#### Get Dashboard Statistics
+### Authentication
+All endpoints (except `/auth/register` and `/auth/login`) require a JWT token in the `Authorization` header:
 ```
-GET /dashboard
+Authorization: Bearer <your_jwt_token>
 ```
-**Response:** Returns summary statistics including total employees, total tasks, and task status breakdown.
 
-**Example Response:**
+### 1. Authentication Endpoints
+
+#### Register User
+```
+POST /auth/register
+```
+**Public endpoint - No authentication required**
+
+**Request Body:**
 ```json
 {
-  "totalEmployees": 10,
-  "totalTasks": 25,
-  "completedTasks": 15,
-  "pendingTasks": 7,
-  "urgentTasks": 3
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "name": "John Doe",
+  "department": "Engineering",
+  "position": "Developer"
+}
+```
+
+**Response:** (201 Created)
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "role": "user",
+    "employee": {
+      "id": 1,
+      "user_id": 1,
+      "name": "John Doe",
+      "email": "user@example.com",
+      "department": "Engineering",
+      "position": "Developer"
+    }
+  }
+}
+```
+
+#### Login
+```
+POST /auth/login
+```
+**Public endpoint - No authentication required**
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+**Response:** (200 OK)
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "role": "user",
+    "employee": {
+      "id": 1,
+      "user_id": 1,
+      "name": "John Doe",
+      "email": "user@example.com",
+      "department": "Engineering",
+      "position": "Developer"
+    }
+  }
+}
+```
+
+#### Get Current User
+```
+GET /auth/me
+```
+**Authentication required**
+
+**Response:** (200 OK)
+```json
+{
+  "success": true,
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "role": "user",
+    "employee": {
+      "id": 1,
+      "user_id": 1,
+      "name": "John Doe",
+      "email": "user@example.com",
+      "department": "Engineering",
+      "position": "Developer"
+    }
+  }
 }
 ```
 
 ---
 
-### 2. Employee Endpoints
+### 2. Dashboard Endpoints
+
+#### Get Dashboard Statistics
+```
+GET /dashboard
+```
+**Authentication required**
+
+**For Admin Users:** Returns system-wide statistics.
+
+**For Regular Users:** Returns only their assigned task statistics.
+
+**Example Response (Admin):**
+```json
+{
+  "success": true,
+  "data": {
+    "totalEmployees": 10,
+    "totalTasks": 25,
+    "completedTasks": 15,
+    "completionRate": 60.0,
+    "tasksByStatus": [
+      { "status": "completed", "count": "15" },
+      { "status": "pending", "count": "7" },
+      { "status": "in_progress", "count": "3" }
+    ]
+  }
+}
+```
+
+**Example Response (Regular User):**
+```json
+{
+  "success": true,
+  "data": {
+    "myTasks": 5,
+    "completedTasks": 3,
+    "completionRate": 60.0,
+    "tasksByStatus": [
+      { "status": "completed", "count": "3" },
+      { "status": "pending", "count": "1" },
+      { "status": "in_progress", "count": "1" }
+    ]
+  }
+}
+```
+
+---
+
+### 3. Employee Endpoints
 
 #### Get All Employees
 ```
 GET /employees
 ```
+**Authentication required - Admin only**
+
 **Response:** Returns array of all employees.
 
 **Example Response:**
 ```json
-[
-  {
-    "id": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "department": "Engineering",
-    "position": "Senior Developer",
-    "created_at": "2025-11-28T10:00:00Z"
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "department": "Engineering",
+      "position": "Senior Developer",
+      "created_at": "2025-11-28T10:00:00Z"
+    }
+  ]
+}
 ```
 
 #### Get Employee by ID
 ```
 GET /employees/:id
 ```
-**Parameters:**
-- `id` (path) - Employee ID
+**Authentication required**
+
+**Access:**
+- Admin: Can view any employee
+- Regular users: Can only view their own profile
 
 **Example Response:**
 ```json
 {
-  "id": 1,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "department": "Engineering",
-  "position": "Senior Developer",
-  "created_at": "2025-11-28T10:00:00Z"
+  "success": true,
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "department": "Engineering",
+    "position": "Senior Developer",
+    "created_at": "2025-11-28T10:00:00Z"
+  }
 }
 ```
 
@@ -221,75 +374,146 @@ GET /employees/:id
 ```
 POST /employees
 ```
+**Authentication required - Admin only**
+
 **Request Body:**
 ```json
 {
   "name": "Jane Smith",
   "email": "jane@example.com",
   "department": "Design",
-  "position": "UI/UX Designer"
+  "position": "UI/UX Designer",
+  "user_id": 2
 }
 ```
 
 **Response:** (201 Created)
 ```json
 {
-  "id": 2,
-  "name": "Jane Smith",
-  "email": "jane@example.com",
+  "success": true,
+  "message": "Employee created successfully",
+  "data": {
+    "id": 2,
+    "user_id": 2,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "department": "Design",
+    "position": "UI/UX Designer",
+    "created_at": "2025-11-28T10:30:00Z"
+  }
+}
+```
+
+#### Update Employee
+```
+PUT /employees/:id
+```
+**Authentication required**
+
+**Access:**
+- Admin: Can update any employee
+- Regular users: Can only update their own profile
+
+**Request Body:**
+```json
+{
+  "name": "Jane Smith Updated",
   "department": "Design",
-  "position": "UI/UX Designer",
-  "created_at": "2025-11-28T10:30:00Z"
+  "position": "Senior UI/UX Designer"
+}
+```
+
+**Response:** (200 OK)
+```json
+{
+  "success": true,
+  "message": "Employee updated successfully",
+  "data": { ... }
+}
+```
+
+#### Delete Employee
+```
+DELETE /employees/:id
+```
+**Authentication required - Admin only**
+
+**Response:** (200 OK)
+```json
+{
+  "success": true,
+  "message": "Employee deleted successfully"
 }
 ```
 
 ---
 
-### 3. Task Endpoints
+### 4. Task Endpoints
 
 #### Get All Tasks
 ```
 GET /tasks
 ```
+**Authentication required**
+
+**Access:**
+- Admin: Can view all tasks
+- Regular users: Can only view their assigned tasks
+
 **Query Parameters:**
-- `employee_id` (optional) - Filter by employee
 - `status` (optional) - Filter by status (pending, in_progress, completed)
-- `priority` (optional) - Filter by priority (low, medium, high, urgent)
+- `employee_id` (optional) - Filter by employee
 
 **Example Response:**
 ```json
-[
-  {
-    "id": 1,
-    "title": "Design Dashboard UI",
-    "description": "Create mockups for the dashboard",
-    "status": "in_progress",
-    "priority": "high",
-    "employee_id": 2,
-    "due_date": "2025-12-15",
-    "created_at": "2025-11-28T10:00:00Z"
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "title": "Design Dashboard UI",
+      "description": "Create mockups for the dashboard",
+      "status": "in_progress",
+      "priority": "high",
+      "employee_id": 2,
+      "employee_name": "Jane Smith",
+      "employee_email": "jane@example.com",
+      "assigned_by": 1,
+      "due_date": "2025-12-15",
+      "created_at": "2025-11-28T10:00:00Z",
+      "updated_at": "2025-11-28T10:00:00Z"
+    }
+  ]
+}
 ```
 
 #### Get Task by ID
 ```
 GET /tasks/:id
 ```
-**Parameters:**
-- `id` (path) - Task ID
+**Authentication required**
+
+**Access:**
+- Admin: Can view any task
+- Regular users: Can only view their assigned tasks
 
 **Example Response:**
 ```json
 {
-  "id": 1,
-  "title": "Design Dashboard UI",
-  "description": "Create mockups for the dashboard",
-  "status": "in_progress",
-  "priority": "high",
-  "employee_id": 2,
-  "due_date": "2025-12-15",
-  "created_at": "2025-11-28T10:00:00Z"
+  "success": true,
+  "data": {
+    "id": 1,
+    "title": "Design Dashboard UI",
+    "description": "Create mockups for the dashboard",
+    "status": "in_progress",
+    "priority": "high",
+    "employee_id": 2,
+    "employee_name": "Jane Smith",
+    "assigned_by": 1,
+    "due_date": "2025-12-15",
+    "created_at": "2025-11-28T10:00:00Z",
+    "updated_at": "2025-11-28T10:00:00Z"
+  }
 }
 ```
 
@@ -297,6 +521,8 @@ GET /tasks/:id
 ```
 POST /tasks
 ```
+**Authentication required - Admin only**
+
 **Request Body:**
 ```json
 {
@@ -311,14 +537,20 @@ POST /tasks
 **Response:** (201 Created)
 ```json
 {
-  "id": 2,
-  "title": "Fix login bug",
-  "description": "Resolve authentication issue on login page",
-  "status": "pending",
-  "priority": "urgent",
-  "employee_id": 1,
-  "due_date": "2025-12-01",
-  "created_at": "2025-11-28T11:00:00Z"
+  "success": true,
+  "message": "Task created successfully",
+  "data": {
+    "id": 2,
+    "title": "Fix login bug",
+    "description": "Resolve authentication issue on login page",
+    "status": "pending",
+    "priority": "urgent",
+    "employee_id": 1,
+    "assigned_by": 1,
+    "due_date": "2025-12-01",
+    "created_at": "2025-11-28T11:00:00Z",
+    "updated_at": "2025-11-28T11:00:00Z"
+  }
 }
 ```
 
@@ -326,10 +558,9 @@ POST /tasks
 ```
 PUT /tasks/:id
 ```
-**Parameters:**
-- `id` (path) - Task ID
+**Authentication required - Admin only**
 
-**Request Body:** (any of the following)
+**Request Body:**
 ```json
 {
   "title": "Fix login bug",
@@ -344,14 +575,9 @@ PUT /tasks/:id
 **Response:** (200 OK)
 ```json
 {
-  "id": 2,
-  "title": "Fix login bug",
-  "description": "Updated description",
-  "status": "completed",
-  "priority": "high",
-  "employee_id": 1,
-  "due_date": "2025-12-05",
-  "created_at": "2025-11-28T11:00:00Z"
+  "success": true,
+  "message": "Task updated successfully",
+  "data": { ... }
 }
 ```
 
@@ -359,8 +585,7 @@ PUT /tasks/:id
 ```
 DELETE /tasks/:id
 ```
-**Parameters:**
-- `id` (path) - Task ID
+**Authentication required - Admin only**
 
 **Response:** (200 OK)
 ```json
@@ -374,10 +599,22 @@ DELETE /tasks/:id
 
 ## 🗄️ Database Schema
 
+### Users Table
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
 ### Employees Table
 ```sql
 CREATE TABLE employees (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     department VARCHAR(50),
@@ -395,47 +632,67 @@ CREATE TABLE tasks (
     status VARCHAR(20) DEFAULT 'pending',
     priority VARCHAR(20) DEFAULT 'medium',
     employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+    assigned_by INTEGER REFERENCES users(id),
     due_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
 **Relationships:**
-- Tasks have a foreign key relationship with Employees
+- Users have a one-to-one relationship with Employees
+- Tasks have a many-to-one relationship with Employees
+- Tasks track who assigned them via the `assigned_by` field
 - Deleting an employee cascades to delete all their tasks
+- Deleting a user cascades to delete their employee profile
 
 ---
 
 ## 📋 Assumptions & Limitations
 
-### Assumptions
-- **Authentication:** No authentication system is implemented. All endpoints are publicly accessible.
-- **Email Uniqueness:** Employee emails must be unique in the system.
-- **Task Status Values:** Assumed valid statuses are `pending`, `in_progress`, and `completed`.
-- **Task Priority Levels:** Assumed valid priorities are `low`, `medium`, `high`, and `urgent`.
-- **PostgreSQL:** The application assumes PostgreSQL is the database system.
-- **Environment Variables:** The backend requires environment variables to be set before running.
-- **CORS:** CORS is enabled for all origins. In production, this should be restricted.
+### Authentication & Authorization
+- **JWT Authentication:** JWT tokens are used for authentication and expire after 24 hours.
+- **Role-based Access Control (RBAC):**
+  - **Admin:** Can view, create, update, and delete employees and tasks. Can view all system statistics.
+  - **Regular User:** Can view their own profile and assigned tasks only. Can see only their task statistics on the dashboard.
+- **Admin Role Assignment:** Currently, users are created with the "user" role. To create an admin, manually update the role in the database.
+- **Email Uniqueness:** Both user emails and employee emails must be unique in the system.
+
+### Task Management
+- **Task Assignment:** Tasks can only be assigned to existing employees by admins.
+- **Task Status Values:** Valid statuses are `pending`, `in_progress`, and `completed`.
+- **Task Priority Levels:** Valid priorities are `low`, `medium`, `high`, and `urgent`.
+- **View Restrictions:** Regular users cannot view tasks assigned to other users.
 
 ### Limitations
-- **No User Authentication:** Tasks and employees cannot be restricted by user. All users can view and modify all data.
 - **No Pagination:** Large datasets are returned without pagination. This may cause performance issues with large datasets.
 - **No Input Validation:** The backend has minimal validation on request data. In production, comprehensive validation should be added.
 - **No File Uploads:** The application does not support file attachments or document uploads.
 - **No Real-time Updates:** The application uses polling; WebSockets are not implemented for real-time updates.
-- **No Audit Trail:** Changes to tasks and employees are not logged for audit purposes.
+- **No Audit Trail:** Changes to tasks and employees are not logged for audit purposes (though `updated_at` timestamps are tracked).
 - **Limited Error Handling:** API responses don't include detailed error codes or messages in all cases.
-- **Single Database:** The application uses a single PostgreSQL instance without replication or backup strategy.
-- **Frontend Performance:** Large lists may have performance issues due to lack of virtualization.
-- **No Search or Advanced Filtering:** Search functionality is not implemented on the frontend.
+- **Single Database Instance:** The application uses a single PostgreSQL instance without replication or backup strategy.
+- **Frontend Not Updated:** The frontend has not been updated to handle authentication. Manual API calls or frontend updates needed for login/register UI.
+- **No Password Reset:** Users cannot reset their passwords via email or other mechanisms.
+- **No User Management UI:** Admin cannot manage user roles through the UI.
+
+### Security Considerations
+- **JWT Secret:** In production, use a strong, randomly generated JWT secret (not the default).
+- **CORS:** CORS is currently enabled for all origins. In production, restrict to specific domains.
+- **Password Security:** Passwords are hashed with bcrypt (salt rounds: 10).
+- **HTTPS:** Use HTTPS in production (not HTTP).
+- **Rate Limiting:** Not implemented. Add rate limiting middleware in production.
 
 ### Future Enhancements
-- Add JWT authentication and authorization
 - Implement pagination for large datasets
-- Add input validation and sanitization
+- Add comprehensive input validation and sanitization
 - Add file upload capability
 - Implement WebSocket for real-time updates
-- Add audit logging
-- Implement advanced search and filtering
+- Add detailed audit logging
+- Add password reset functionality
+- Add user management dashboard for admins
+- Implement email verification on registration
+- Add two-factor authentication (2FA)
+- Add refresh token mechanism for JWT
 - Add unit and integration tests
 - Deploy with CI/CD pipeline

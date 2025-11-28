@@ -8,13 +8,20 @@ const getAllTasks = async (req, res) => {
       SELECT 
         tasks.*,
         employees.name as employee_name,
-        employees.email as employee_email
+        employees.email as employee_email,
+        employees.user_id
       FROM tasks
       LEFT JOIN employees ON tasks.employee_id = employees.id
     `;
     
     const conditions = [];
     const values = [];
+
+    // Regular users can only see their assigned tasks
+    if (req.user.role !== 'admin') {
+      conditions.push(`employees.user_id = $${conditions.length + 1}`);
+      values.push(req.user.id);
+    }
     
     if (status) {
       conditions.push(`tasks.status = $${conditions.length + 1}`);
@@ -54,7 +61,8 @@ const getTaskById = async (req, res) => {
     const result = await pool.query(
       `SELECT 
         tasks.*,
-        employees.name as employee_name
+        employees.name as employee_name,
+        employees.user_id
       FROM tasks
       LEFT JOIN employees ON tasks.employee_id = employees.id
       WHERE tasks.id = $1`,
@@ -67,10 +75,20 @@ const getTaskById = async (req, res) => {
         message: 'Task not found'
       });
     }
+
+    const task = result.rows[0];
+
+    // Regular users can only view their assigned tasks
+    if (req.user.role !== 'admin' && task.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
     
     res.json({
       success: true,
-      data: result.rows[0]
+      data: task
     });
   } catch (error) {
     console.error('Error getting task:', error);
@@ -83,6 +101,14 @@ const getTaskById = async (req, res) => {
 
 const createTask = async (req, res) => {
   try {
+    // Only admins can create tasks
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
     const { title, description, status, priority, employee_id, due_date } = req.body;
     
     if (!title || !employee_id) {
@@ -93,10 +119,10 @@ const createTask = async (req, res) => {
     }
     
     const result = await pool.query(
-      `INSERT INTO tasks (title, description, status, priority, employee_id, due_date)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO tasks (title, description, status, priority, employee_id, assigned_by, due_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [title, description, status || 'pending', priority || 'medium', employee_id, due_date]
+      [title, description, status || 'pending', priority || 'medium', employee_id, req.user.id, due_date]
     );
     
     res.status(201).json({
@@ -118,6 +144,14 @@ const updateTask = async (req, res) => {
     const { id } = req.params;
     const { title, description, status, priority, employee_id, due_date } = req.body;
     
+    // Only admins can update tasks
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
     const result = await pool.query(
       `UPDATE tasks
        SET title = COALESCE($1, title),
@@ -156,6 +190,14 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Only admins can delete tasks
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
     
     const result = await pool.query(
       'DELETE FROM tasks WHERE id = $1 RETURNING *',

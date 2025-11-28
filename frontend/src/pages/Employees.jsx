@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { getEmployees, createEmployee } from '../services/api';
+import { getDashboardStats } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -8,16 +10,20 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [personalStats, setPersonalStats] = useState(null);
+  const { isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     department: '',
-    position: ''
+    position: '',
+    temporary_password: ''
   });
 
   // Fetch employees when component loads
   useEffect(() => {
-    fetchEmployees();
+    if (isAdmin) fetchEmployees();
+    else fetchPersonalStats();
   }, []);
 
   const fetchEmployees = async () => {
@@ -45,7 +51,7 @@ const Employees = () => {
     e.preventDefault();
     try {
       await createEmployee(formData);
-      setFormData({ name: '', email: '', department: '', position: '' });
+      setFormData({ name: '', email: '', department: '', position: '', temporary_password: '' });
       setShowAddForm(false);
       fetchEmployees(); // Refresh the list
     } catch (err) {
@@ -60,18 +66,20 @@ const Employees = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-800">Employees</h2>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          {showAddForm ? 'Cancel' : '+ Add Employee'}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {showAddForm ? 'Cancel' : '+ Add Employee'}
+          </button>
+        )}
       </div>
 
       <ErrorMessage message={error} />
 
       {/* Add Employee Form */}
-      {showAddForm && (
+      {isAdmin && showAddForm && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-semibold mb-4">Add New Employee</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,6 +137,21 @@ const Employees = () => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Temporary Password (optional)
+              </label>
+              <input
+                type="text"
+                name="temporary_password"
+                value={formData.temporary_password}
+                onChange={handleInputChange}
+                placeholder="Temp password for login"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">Provide a temporary password so the employee can log in and change it later.</p>
+            </div>
+
             <button
               type="submit"
               className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors"
@@ -163,7 +186,9 @@ const Employees = () => {
 
       {employees.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No employees found. Add your first employee!</p>
+          <p className="text-gray-500">
+            No employees found. {isAdmin ? 'Add your first employee!' : 'Ask an admin to add employees.'}
+          </p>
         </div>
       )}
     </div>

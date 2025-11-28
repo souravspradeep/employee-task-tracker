@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { getTasks, getEmployees, createTask, updateTask, deleteTask } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
 
-const Tasks = () => {
+const Tasks = ({ initialFilters = {} }) => {
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterEmployee, setFilterEmployee] = useState('');
+  const [filterStatus, setFilterStatus] = useState(initialFilters.filterStatus || '');
+  const [filterEmployee, setFilterEmployee] = useState(initialFilters.filterEmployee || '');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -21,6 +22,7 @@ const Tasks = () => {
     employee_id: '',
     due_date: ''
   });
+  const { isAdmin, user } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -33,15 +35,24 @@ const Tasks = () => {
       
       const filters = {};
       if (filterStatus) filters.status = filterStatus;
-      if (filterEmployee) filters.employee_id = filterEmployee;
       
-      const [tasksResponse, employeesResponse] = await Promise.all([
-        getTasks(filters),
-        getEmployees()
-      ]);
+      // If user is not admin, only fetch their own tasks
+      if (!isAdmin && user?.employee?.id) {
+        filters.employee_id = user.employee.id;
+      } else if (filterEmployee) {
+        // Only admins can filter by employee
+        filters.employee_id = filterEmployee;
+      }
       
+      const tasksResponse = await getTasks(filters);
       setTasks(tasksResponse.data);
-      setEmployees(employeesResponse.data);
+
+      if (isAdmin) {
+        const employeesResponse = await getEmployees();
+        setEmployees(employeesResponse.data);
+      } else {
+        setEmployees([]);
+      }
     } catch (err) {
       setError('Failed to load tasks');
       console.error(err);
@@ -105,12 +116,14 @@ const Tasks = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-800">Tasks</h2>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          {showAddForm ? 'Cancel' : '+ Add Task'}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {showAddForm ? 'Cancel' : '+ Add Task'}
+          </button>
+        )}
       </div>
 
       <ErrorMessage message={error} />
@@ -134,28 +147,30 @@ const Tasks = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Employee
-            </label>
-            <select
-              value={filterEmployee}
-              onChange={(e) => setFilterEmployee(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Employees</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by Employee
+              </label>
+              <select
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Employees</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Add Task Form */}
-      {showAddForm && (
+      {isAdmin && showAddForm && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-semibold mb-4">Add New Task</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -288,22 +303,28 @@ const Tasks = () => {
               </div>
 
               <div className="flex flex-col space-y-2 ml-4">
-                <select
-                  value={task.status}
-                  onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
+                {isAdmin ? (
+                  <>
+                    <select
+                      value={task.status}
+                      onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
 
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-600">&nbsp;</div>
+                )}
               </div>
             </div>
           </div>
@@ -312,7 +333,9 @@ const Tasks = () => {
 
       {tasks.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No tasks found. {filterStatus || filterEmployee ? 'Try changing filters.' : 'Add your first task!'}</p>
+          <p className="text-gray-500">
+            No tasks found. {filterStatus ? 'Try changing filters.' : (isAdmin ? 'Add your first task!' : 'No tasks assigned yet.')}
+          </p>
         </div>
       )}
     </div>
