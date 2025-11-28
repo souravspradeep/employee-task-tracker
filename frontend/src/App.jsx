@@ -6,11 +6,13 @@ import Employees from './pages/Employees';
 import Tasks from './pages/Tasks';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Landing from './pages/Landing';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageParams, setPageParams] = useState({});
   const [authPage, setAuthPage] = useState('login');
+  const [showLanding, setShowLanding] = useState(true);
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -25,14 +27,18 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <>
-        {authPage === 'login' ? (
-          <Login onSwitchToRegister={() => setAuthPage('register')} />
-        ) : (
-          <Register onSwitchToLogin={() => setAuthPage('login')} />
-        )}
-      </>
+    if (showLanding) {
+      return (
+        <Landing
+          onGetStarted={() => { setShowLanding(false); setAuthPage('register'); }}
+          onSignIn={() => { setShowLanding(false); setAuthPage('login'); }}
+        />
+      );
+    }
+    return authPage === 'login' ? (
+      <Login onSwitchToRegister={() => setAuthPage('register')} />
+    ) : (
+      <Register onSwitchToLogin={() => setAuthPage('login')} />
     );
   }
 
