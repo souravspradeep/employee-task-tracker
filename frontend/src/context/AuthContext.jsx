@@ -60,24 +60,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.post('/auth/login', { email, password });
+  try {
+    setLoading(true);
+    setError(null);
+    localStorage.removeItem('token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
 
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      return { success: true, user };
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Login failed';
-      setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
-      setLoading(false);
-    }
-  };
+    const response = await api.post('/auth/login', { email, password });
+
+    const { token, user } = response.data;
+    localStorage.setItem('token', token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    setUser(user);
+
+    return { success: true, user };
+  } catch (err) {
+    const errorMsg = err.response?.data?.message || 'Login failed';
+    setError(errorMsg);
+    return { success: false, error: errorMsg };
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const logout = () => {
     localStorage.removeItem('token');

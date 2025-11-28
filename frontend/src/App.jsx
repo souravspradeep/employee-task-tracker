@@ -6,14 +6,13 @@ import Employees from './pages/Employees';
 import Tasks from './pages/Tasks';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Landing from './pages/Landing';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageParams, setPageParams] = useState({});
   const [authPage, setAuthPage] = useState('login');
-  const [showLanding, setShowLanding] = useState(true);
-  const { isAuthenticated, loading } = useAuth();
+
+  const { isAuthenticated, loading, authError } = useAuth();
 
   if (loading) {
     return (
@@ -27,18 +26,16 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    if (showLanding) {
-      return (
-        <Landing
-          onGetStarted={() => { setShowLanding(false); setAuthPage('register'); }}
-          onSignIn={() => { setShowLanding(false); setAuthPage('login'); }}
-        />
-      );
-    }
     return authPage === 'login' ? (
-      <Login onSwitchToRegister={() => setAuthPage('register')} />
+      <Login
+        onSwitchToRegister={() => setAuthPage('register')}
+        errorMessage={authError || null}
+      />
     ) : (
-      <Register onSwitchToLogin={() => setAuthPage('login')} />
+      <Register
+        onSwitchToLogin={() => setAuthPage('login')}
+        errorMessage={authError || null}
+      />
     );
   }
 
@@ -63,6 +60,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar currentPage={currentPage} onPageChange={setPage} />
+
       {currentPage === 'dashboard' ? (
         <main style={{ minHeight: 'calc(100vh - 64px)' }} className="w-full bg-gray-100">
           {renderPage()}
