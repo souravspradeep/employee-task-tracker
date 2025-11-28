@@ -67,32 +67,21 @@ const initializeDatabase = async () => {
 // Initialize database before starting server
 initializeDatabase();
 
+const fs = require('fs');
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+
 app.use(cors()); 
 app.use(express.json()); 
 
-// Root endpoint - for testing
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Employee Task Tracker API is running!',
-    version: '1.0.0',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      employees: '/api/employees',
-      tasks: '/api/tasks',
-      dashboard: '/api/dashboard'
-    }
-  });
-});
-
-// Serve static frontend files (only if they exist - for production)
-const frontendDistPath = path.join(__dirname, '../../frontend/dist');
-try {
+// Serve static frontend files (CSS, JS, images, etc)
+if (fs.existsSync(frontendDistPath)) {
+  console.log('✓ Serving frontend from:', frontendDistPath);
   app.use(express.static(frontendDistPath));
-} catch (err) {
-  console.log('Frontend dist folder not found - running in API-only mode');
+} else {
+  console.log('⚠️  Frontend dist folder not found');
 }
 
+// API Routes
 app.get('/api', (req, res) => {
   res.json({ 
     message: 'Employee Task Tracker API is running!',
@@ -106,12 +95,17 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/health', healthRoutes);
 
-// Catch-all route for 404
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
+// Serve index.html for all non-API routes (SPA fallback)
+app.get('*', (req, res) => {
+  const indexPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({
+      success: false,
+      message: 'Frontend not available'
+    });
+  }
 });
 
 app.listen(PORT, () => {
