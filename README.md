@@ -146,6 +146,306 @@ npm start
 
 ---
 
+## 🌐 Deploying on Render (Beginner Guide)
+
+This section provides step-by-step instructions to deploy your full-stack application on Render.
+
+### What You'll Deploy
+- **Backend API** on a Render Web Service (Node.js)
+- **Frontend** served by the Backend (built static files)
+- **Database** using Render PostgreSQL
+
+### Prerequisites
+1. **GitHub Account** - Required to connect your repository to Render
+2. **Render Account** - Sign up at [render.com](https://render.com) (free tier available)
+3. **Your Code on GitHub** - Push your project to GitHub
+
+### Step 1: Push Your Code to GitHub
+
+If you haven't already, push your project to GitHub:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/employee-task-tracker.git
+git push -u origin main
+```
+
+Replace `YOUR_USERNAME` with your actual GitHub username.
+
+---
+
+### Step 2: Create a Render Account
+
+1. Go to [render.com](https://render.com)
+2. Click **Sign Up**
+3. Sign up using GitHub (easiest option)
+4. Authorize Render to access your GitHub repositories
+
+---
+
+### Step 3: Create PostgreSQL Database on Render
+
+#### 3a. Create a New PostgreSQL Instance
+
+1. From Render Dashboard, click **New +** → **PostgreSQL**
+2. Fill in the details:
+   - **Name:** `employee-tracker-db`
+   - **Database:** `employee_tracker` (default is fine)
+   - **User:** `postgres` (default is fine)
+   - **Region:** Choose closest to you (e.g., Ohio, Frankfurt)
+   - **PostgreSQL Version:** 15 or higher
+3. Select **Free** tier (for testing; use paid for production)
+4. Click **Create Database**
+
+#### 3b. Initialize Database Schema
+
+1. Once database is created, click on it
+2. Copy the **Internal Database URL** (looks like `postgresql://...`)
+3. In your local terminal, set the database URL:
+   ```bash
+   # Windows Command Prompt
+   set DATABASE_URL=your_internal_database_url_here
+   ```
+   or
+   ```bash
+   # PowerShell
+   $env:DATABASE_URL="your_internal_database_url_here"
+   ```
+
+4. Connect and initialize:
+   ```bash
+   psql "your_internal_database_url"
+   ```
+
+5. Copy and paste the SQL from `database/schema.sql` into the psql terminal
+6. Type `\q` to exit
+
+Alternatively, use Render's **Query** tab to run the schema SQL directly.
+
+---
+
+### Step 4: Create Backend Web Service
+
+#### 4a. Create Service
+
+1. From Render Dashboard, click **New +** → **Web Service**
+2. Select your GitHub repository (`employee-task-tracker`)
+3. Click **Connect**
+
+#### 4b. Configure Service
+
+Fill in the configuration:
+
+- **Name:** `employee-tracker-backend`
+- **Environment:** `Node`
+- **Build Command:** `cd backend && npm install`
+- **Start Command:** `cd backend && npm start`
+- **Instance Type:** Free (for testing)
+
+#### 4c. Add Environment Variables
+
+Scroll to **Environment** section and add:
+
+| Key | Value |
+|-----|-------|
+| `PORT` | `5000` |
+| `DB_HOST` | Copy from PostgreSQL instance (Internal Database URL, extract hostname) |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `employee_tracker` |
+| `DB_USER` | `postgres` |
+| `DB_PASSWORD` | Copy from PostgreSQL instance credentials |
+| `JWT_SECRET` | Generate a secure random string (e.g., use [randomkeygen.com](https://randomkeygen.com)) |
+
+**To find PostgreSQL connection details:**
+1. Go to your Render PostgreSQL instance
+2. Click on it
+3. Scroll down to see **Connections** → **Internal Database URL** or individual fields
+
+**Example Internal URL:** `postgresql://postgres:password123@dpg-xxxxx.render.com:5432/employee_tracker`
+
+Extract:
+- `DB_HOST`: `dpg-xxxxx.render.com`
+- `DB_USER`: `postgres`
+- `DB_PASSWORD`: `password123`
+- `DB_NAME`: `employee_tracker`
+- `DB_PORT`: `5432`
+
+#### 4d. Create Service
+
+Click **Create Web Service** and wait for it to deploy (2-3 minutes).
+
+Once deployed, you'll see a URL like: `https://employee-tracker-backend.onrender.com`
+
+---
+
+### Step 5: Build & Deploy Frontend
+
+The frontend will be served by the backend. First, let's build it:
+
+#### 5a. Update Frontend API URL
+
+Edit `frontend/src/services/api.js`:
+
+```javascript
+// Change this line:
+// const API_BASE_URL = 'http://localhost:5000/api';
+
+// To your Render backend URL:
+const API_BASE_URL = 'https://employee-tracker-backend.onrender.com/api';
+```
+
+#### 5b. Add Frontend Build to Backend Server
+
+Modify `backend/src/server.js` to serve the built frontend:
+
+```javascript
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const authRoutes = require('./routes/authRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors()); 
+app.use(express.json()); 
+
+// Serve static frontend files (after building)
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+app.get('/api', (req, res) => {
+  res.json({ 
+    message: 'Employee Task Tracker API is running!',
+    version: '1.0.0'
+  });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/health', healthRoutes);
+
+// Serve frontend for all other routes (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`API endpoints available at http://localhost:${PORT}/api`);
+});
+```
+
+#### 5c. Update Backend Build Command
+
+Go back to your Render Web Service and update the **Build Command**:
+
+```bash
+cd backend && npm install && cd ../frontend && npm install && npm run build && cd ../backend
+```
+
+#### 5d. Redeploy
+
+1. Go to your Render Web Service
+2. Click **Manual Deploy** → **Deploy latest commit**
+3. Wait for deployment to complete (3-5 minutes)
+
+---
+
+### Step 6: Test Your Deployment
+
+1. Go to your backend URL: `https://employee-tracker-backend.onrender.com`
+2. You should see: `{"message": "Employee Task Tracker API is running!", "version": "1.0.0"}`
+3. Test the API: `https://employee-tracker-backend.onrender.com/api/health`
+4. Access your app: `https://employee-tracker-backend.onrender.com/` (frontend should load)
+
+---
+
+### Step 7: First Login (Create Admin User)
+
+1. Register a new user via the frontend
+2. To make them admin, use Render PostgreSQL query:
+   ```sql
+   UPDATE users SET role = 'admin' WHERE email = 'your_email@example.com';
+   ```
+
+Or insert an admin directly:
+   ```sql
+   INSERT INTO users (email, password, role) 
+   VALUES ('admin@example.com', '$2a$10$hashedpassword', 'admin');
+   ```
+
+---
+
+### Step 8: Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| **"Cannot find module"** | Check Build Command includes `npm install` |
+| **Database connection failed** | Verify `DB_HOST`, `DB_USER`, `DB_PASSWORD` in Environment variables |
+| **Frontend shows 404** | Make sure frontend is built; check Build Command |
+| **CORS errors** | CORS is enabled for all origins in server.js; adjust if needed |
+| **Free tier database hibernates** | Add at least 1 read replica or upgrade to paid plan |
+
+---
+
+### Step 9: Production Checklist
+
+- [ ] Update `JWT_SECRET` to a strong random string
+- [ ] Set `NODE_ENV=production` in environment variables
+- [ ] Update CORS to allow only your domain
+- [ ] Enable HTTPS (Render does this automatically)
+- [ ] Set up database backups (Render paid tier)
+- [ ] Monitor logs for errors
+- [ ] Test all features (login, create task, update employee, etc.)
+
+---
+
+### Step 10: Custom Domain (Optional)
+
+1. In Render Service settings, scroll to **Custom Domain**
+2. Enter your domain (e.g., `employee-tracker.com`)
+3. Update DNS records at your domain registrar
+4. Render will provide DNS records to add
+
+---
+
+### Useful Links
+
+- [Render Documentation](https://render.com/docs)
+- [PostgreSQL Setup Guide](https://render.com/docs/databases)
+- [Environment Variables Guide](https://render.com/docs/environment-variables)
+- [Deploy from GitHub](https://render.com/docs/github)
+
+---
+
+## 💰 Render Pricing
+
+- **Web Service (Free):** 750 free tier hours/month (shared CPU, RAM)
+- **PostgreSQL (Free):** 90 days free, then paused if inactive
+- **Paid tiers:** Starting $7/month for Web Service, $15/month for dedicated DB
+
+For production use, consider upgrading to avoid free tier limitations.
+
+---
+
 ## 📡 API Endpoint Documentation
 
 ### Base URL
