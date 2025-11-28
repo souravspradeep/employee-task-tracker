@@ -94,10 +94,7 @@ JWT_SECRET=your-secret-key-here-change-in-production
    psql -U postgres -d employee_tracker -f ../database/schema.sql
    ```
 
-3. (Optional) Load sample data:
-   ```bash
-   psql -U postgres -d employee_tracker -f ../database/sample_data.sql
-   ```
+
 
 ### 3. Frontend Setup
 
@@ -157,12 +154,28 @@ http://localhost:5000/api
 ```
 
 ### Authentication
-All endpoints (except `/auth/register` and `/auth/login`) require a JWT token in the `Authorization` header:
+All endpoints (except `/auth/register`, `/auth/login`, and `/health`) require a JWT token in the `Authorization` header:
 ```
 Authorization: Bearer <your_jwt_token>
 ```
 
-### 1. Authentication Endpoints
+### 1. Health Check
+
+#### Get API Health Status
+```
+GET /health
+```
+**Public endpoint - No authentication required**
+
+**Response:** (200 OK)
+```json
+{
+  "status": "UP",
+  "timestamp": "2025-11-28T12:00:00.000Z"
+}
+```
+
+### 2. Authentication Endpoints
 
 #### Register User
 ```
@@ -267,7 +280,7 @@ GET /auth/me
 
 ---
 
-### 2. Dashboard Endpoints
+### 3. Dashboard Endpoints
 
 #### Get Dashboard Statistics
 ```
@@ -316,7 +329,7 @@ GET /dashboard
 
 ---
 
-### 3. Employee Endpoints
+### 4. Employee Endpoints
 
 #### Get All Employees
 ```
@@ -448,7 +461,7 @@ DELETE /employees/:id
 
 ---
 
-### 4. Task Endpoints
+### 5. Task Endpoints
 
 #### Get All Tasks
 ```
@@ -672,7 +685,6 @@ CREATE TABLE tasks (
 - **No Audit Trail:** Changes to tasks and employees are not logged for audit purposes (though `updated_at` timestamps are tracked).
 - **Limited Error Handling:** API responses don't include detailed error codes or messages in all cases.
 - **Single Database Instance:** The application uses a single PostgreSQL instance without replication or backup strategy.
-- **Frontend Not Updated:** The frontend has not been updated to handle authentication. Manual API calls or frontend updates needed for login/register UI.
 - **No Password Reset:** Users cannot reset their passwords via email or other mechanisms.
 - **No User Management UI:** Admin cannot manage user roles through the UI.
 
@@ -684,15 +696,21 @@ CREATE TABLE tasks (
 - **Rate Limiting:** Not implemented. Add rate limiting middleware in production.
 
 ### Future Enhancements
+
 - Implement pagination for large datasets
+
 - Add comprehensive input validation and sanitization
+
 - Add file upload capability
+
 - Implement WebSocket for real-time updates
+
 - Add detailed audit logging
+
 - Add password reset functionality
+
 - Add user management dashboard for admins
-- Implement email verification on registration
-- Add two-factor authentication (2FA)
+
 - Add refresh token mechanism for JWT
-- Add unit and integration tests
-- Deploy with CI/CD pipeline
+
+
