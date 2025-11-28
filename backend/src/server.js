@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+const pool = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const taskRoutes = require('./routes/taskRoutes');
@@ -11,6 +12,60 @@ const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize database schema on startup
+const initializeDatabase = async () => {
+  try {
+    // Create users table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✓ Users table ready');
+
+    // Create employees table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS employees (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        department VARCHAR(50),
+        position VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✓ Employees table ready');
+
+    // Create tasks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        priority VARCHAR(20) DEFAULT 'medium',
+        employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+        assigned_by INTEGER REFERENCES users(id),
+        due_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✓ Tasks table ready');
+    console.log('✓ Database initialization complete!');
+  } catch (err) {
+    console.error('Error initializing database:', err.message);
+  }
+};
+
+// Initialize database before starting server
+initializeDatabase();
 
 app.use(cors()); 
 app.use(express.json()); 
