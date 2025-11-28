@@ -91,16 +91,11 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/health', healthRoutes);
 
-// Serve frontend for all other routes (SPA fallback) - only if frontend exists
-app.get('*', (req, res) => {
-  const indexPath = path.join(frontendDistPath, 'index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      res.status(404).json({
-        success: false,
-        message: 'Route not found and frontend not available'
-      });
-    }
+// Catch-all route for 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
   });
 });
 
