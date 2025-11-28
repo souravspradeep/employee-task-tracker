@@ -2,6 +2,12 @@
 
 A full-stack web application for managing employees and their tasks. Built with React, Express, PostgreSQL, and Tailwind CSS.
 
+## 🌐 Live Website
+
+**Visit the live application:** [https://employee-task-tracker-eccr.onrender.com](https://employee-task-tracker-eccr.onrender.com)
+
+---
+
 ## 📋 Table of Contents
 
 - [Tech Stack & Architecture](#tech-stack--architecture)
@@ -143,6 +149,23 @@ npm run preview
 cd backend
 npm start
 ```
+
+---
+
+## 🎥 Website Working
+
+Here's a demo video of the application in action:
+
+[![Employee Task Tracker Demo](https://img.youtube.com/vi/k-3A04dyTCI/maxresdefault.jpg)](https://www.youtube.com/watch?v=k-3A04dyTCI)
+
+**Features Demonstrated:**
+- ✅ User Registration & Login
+- ✅ Dashboard with Statistics
+- ✅ Employee Management
+- ✅ Task Management
+- ✅ Real-time Updates
+
+> Click the thumbnail above to watch the full demo video on YouTube!
 
 ---
 
