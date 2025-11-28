@@ -1,10 +1,18 @@
 {
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.17",
-    "chart.js": "^4.5.1",
-    "lucide-react": "^0.555.0",
-    "react-chartjs-2": "^5.3.1",
-    "recharts": "^3.5.0",
-    "tailwindcss": "^4.1.17"
+  "name": "employee-task-tracker",
+  "version": "1.0.0",
+  "description": "Full-stack employee task tracker application",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
