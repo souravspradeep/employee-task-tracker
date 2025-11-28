@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node backend/src/server.js",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "build": "cd frontend && npx vite build",
+    "build": "node build.js",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
   "keywords": [],
